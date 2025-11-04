@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>CompostBot 3000 - Drag & Drop</title>
+<style>
+  body { font-family: sans-serif; text-align: center; background: #f0f0f0; }
+  #canvas { border: 2px solid #333; background: #fff; display: block; margin: auto; }
+  #sidebar { width: 200px; float:left; margin-left: 20px; }
+  .nodeButton { display:block; margin: 5px; padding:5px; background: orange; cursor:pointer; }
+</style>
+</head>
+<body>
+<h1>CompostBot 3000 - Drag & Drop Logic Builder</h1>
+<div id="sidebar">
+  <h3>Nodes</h3>
+  <div class="nodeButton" onclick="createNode('food')">IF Food?</div>
+  <div class="nodeButton" onclick="createNode('cleanPlastic')">IF Clean Plastic?</div>
+  <div class="nodeButton" onclick="createNode('soiledPaper')">IF Soiled Paper?</div>
+  <button onclick="runSimulation()">Run CompostBot</button>
+</div>
+<canvas id="canvas" width="900" height="600"></canvas>
+
+<script>
+const canvas = document.getElementById("canvas");
+const ctx = canvas.getContext("2d");
+
+let nodes = [];
+let items = [
+  {emoji:"🍌", type:"food", material:"organic", is_clean:true, x:450, y:50, finished:false},
+  {emoji:"🍕", type:"food", material:"paper", is_clean:false, x:480, y:50, finished:false},
+  {emoji:"🧃", type:"drink", material:"plastic", is_clean:true, x:420, y:50, finished:false},
+  {emoji:"🥤", type:"drink", material:"plastic", is_clean:false, x:460, y:50, finished:false},
+  {emoji:"🥡", type:"container", material:"paper", is_clean:false, x:440, y:50, finished:false},
+];
+
+// Fixed bins
+const bins = [
+  {name:"Compost", x:100, y:500, width:200, height:80, color:"green"},
+  {name:"Recycling", x:350, y:500, width:200, height:80, color:"blue"},
+  {name:"Landfill", x:600, y:500, width:200, height:80, color:"gray"}
+];
+
+function drawBins(){
+  bins.forEach(bin=>{
+    ctx.fillStyle = bin.color;
+    ctx.fillRect(bin.x, bin.y, bin.width, bin.height);
+    ctx.fillStyle="black";
+    ctx.font="20px sans-serif";
+    ctx.fillText(bin.name, bin.x+50, bin.y+50);
+  });
+}
+
+function drawNodes(){
+  nodes.forEach(n=>{
+    ctx.fillStyle="orange";
+    ctx.beginPath();
+    ctx.moveTo(n.x, n.y-20);
+    ctx.lineTo(n.x-20, n.y+20);
+    ctx.lineTo(n.x+20, n.y+20);
+    ctx.closePath();
+    ctx.fill();
+    ctx.fillStyle="black";
+    ctx.font="14px sans-serif";
+    ctx.fillText(n.conditionName, n.x-30, n.y+40);
+  });
+}
+
+function drawItems(){
+  items.forEach(item=>{
+    ctx.font="40px sans-serif";
+    ctx.fillText(item.emoji, item.x, item.y);
+  });
+}
+
+function createNode(conditionName){
+  // Place in middle canvas by default
+  nodes.push({x:450, y:200+nodes.length*50, conditionName:conditionName});
+  drawCanvas();
+}
+
+function drawCanvas(){
+  ctx.clearRect(0,0,canvas.width,canvas.height);
+  drawBins();
+  drawNodes();
+  drawItems();
+}
+
+// ---------------------------
+// Simulation Logic
+// ---------------------------
+
+function runSimulation(){
+  // Simple automatic paths: match condition names to item properties
+  items.forEach(item=>{
+    if(nodes.length===0){
+      // default
+      item.targetBin="Landfill";
+    } else {
+      // naive first-node check
+      const node = nodes[0];
+      if(node.conditionName==="food" && item.type==="food") item.targetBin="Compost";
+      else if(node.conditionName==="cleanPlastic" && item.material==="plastic" && item.is_clean) item.targetBin="Recycling";
+      else if(node.conditionName==="soiledPaper" && item.material==="paper" && !item.is_clean) item.targetBin="Compost";
+      else item.targetBin="Landfill";
+    }
+  });
+  animateItems();
+}
+
+function animateItems(){
+  const animation = setInterval(()=>{
+    let allFinished = true;
+    ctx.clearRect(0,0,canvas.width,canvas.height);
+    drawBins();
+    drawNodes();
+    items.forEach(item=>{
+      if(!item.finished){
+        allFinished=false;
+        const bin = bins.find(b => b.name===item.targetBin);
+        item.x += (bin.x + bin.width/2 - item.x)*0.05;
+        item.y += (bin.y -30 - item.y)*0.05;
+        if(Math.abs(item.x - (bin.x + bin.width/2))<2 && Math.abs(item.y - (bin.y-30))<2){
+          item.finished=true;
+        }
+      }
+    });
+    drawItems();
+    if(allFinished) clearInterval(animation);
+  }, 20);
+}
+
+drawCanvas();
+</script>
+</body>
+</html>
